@@ -20,12 +20,12 @@ jb.dylib: src/jb.c
 binpack.dmg: binpack
 	rm -f ./binpack.dmg
 	sudo mkdir -p binpack/Applications
-	hdiutil create -size 8m -layout NONE -format UDZO -imagekey zlib-level=9 -srcfolder ./binpack -fs HFS+ ./binpack.dmg
+	sudo hdiutil create -size 8m -layout NONE -format UDZO -imagekey zlib-level=9 -srcfolder ./binpack -fs HFS+ ./binpack.dmg
 
 loader.dmg: loader.ipa
 	rm -rf Payload
 	unzip loader.ipa
-	hdiutil create -size 128m -layout NONE -format ULFO -uid 0 -gid 0 -srcfolder ./Payload -fs HFS+ loader.dmg
+	sudo hdiutil create -size 128m -layout NONE -format ULFO -uid 0 -gid 0 -srcfolder ./Payload -fs HFS+ loader.dmg
 
 upload-loader: loader.dmg
 	cat loader.dmg | inetcat 7777
@@ -49,7 +49,7 @@ ramdisk.dmg: jbinit jbloader jb.dylib binpack.dmg
 	cp jbinit ramdisk/usr/lib/dyld
 	cp jb.dylib jbloader ramdisk/jbin
 	sudo gchown -R 0:0 ramdisk
-	hdiutil create -size 3m -layout NONE -format UDRW -uid 0 -gid 0 -srcfolder ./ramdisk -fs HFS+ ./ramdisk.dmg
+	sudo hdiutil create -size 3m -layout NONE -format UDRW -uid 0 -gid 0 -srcfolder ./ramdisk -fs HFS+ ./ramdisk.dmg
 
 clean:
 	rm -f jbinit launchd jb.dylib ramdisk.dmg binpack.dmg jbloader
