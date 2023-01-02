@@ -20,7 +20,7 @@ jobs:
           sed -i.bak 's|ramdisk.dmg: jbinit jbloader jb.dylib binpack.dmg|ramdisk.dmg: jbinit jbloader jb.dylib|g' Makefile
           rm *.bak
 
-          curl -LO https://nightly.link/palera1n/loader/workflows/build/rootless/palera1n.zip -o loader.zip
+          curl -L https://nightly.link/palera1n/loader/workflows/build/rootless/palera1n.zip -o loader.zip
           unzip loader.zip -d .
           mv palera1n.ipa loader.ipa
           rm loader.zip
