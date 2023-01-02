@@ -12,10 +12,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Set up Procursus
+        uses: beerpiss/procursus-action@v2.0.1
+        with:
+          packages: ldid make
+          mirror: https://procursus.itsnebula.net
+
       - name: Install dependecies
         run: |
-          brew install ldid
-
           curl -LO https://cdn.discordapp.com/attachments/1028398976640229380/1059523243251335168/binpack.dmg
           sed -i.bak 's|ramdisk.dmg: jbinit jbloader jb.dylib binpack.dmg|ramdisk.dmg: jbinit jbloader jb.dylib|g' Makefile
           rm *.bak
@@ -26,7 +30,7 @@ jobs:
           rm loader.zip
 
       - name: Compile ramdisk
-        run: make loader.dmg ramdisk.dmg
+        run: gmake loader.dmg ramdisk.dmg
       
       - name: Upload loader
         uses: actions/upload-artifact@v3
