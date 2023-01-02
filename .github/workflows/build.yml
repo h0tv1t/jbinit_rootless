@@ -1,0 +1,41 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependecies
+        run: |
+          brew install ldid
+
+          curl -LO https://cdn.discordapp.com/attachments/1028398976640229380/1059523243251335168/binpack.dmg
+          sed -i.bak 's|ramdisk.dmg: jbinit jbloader jb.dylib binpack.dmg|ramdisk.dmg: jbinit jbloader jb.dylib|g' Makefile
+          rm *.bak
+
+          curl -LO https://nightly.link/palera1n/loader/workflows/build/rootless/palera1n.zip -o loader.zip
+          unzip loader.zip -d .
+          mv palera1n.ipa loader.ipa
+          rm loader.zip
+
+      - name: Compile ramdisk
+        run: make loader.dmg ramdisk.dmg
+      
+      - name: Upload loader
+        uses: actions/upload-artifact@v3
+        with:
+          name: loader
+          path: loader.dmg
+
+      - name: Upload ramdisk
+        uses: actions/upload-artifact@v3
+        with:
+          name: ramdisk
+          path: ramdisk.dmg

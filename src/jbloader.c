@@ -25,11 +25,11 @@ extern char** environ;
 #define serverURL "http://static.palera.in" // if doing development, change this to your local server
 
 enum {
-  POGO_UNKNOWN = -1,
-  POGO_SUCCESS = 0,
-  POGO_2BIG = 1,
-  POGO_MISMATCH = 2,
-  POGO_UNAVAILABLE = 3,
+  LOADER_UNKNOWN = -1,
+  LOADER_SUCCESS = 0,
+  LOADER_2BIG = 1,
+  LOADER_MISMATCH = 2,
+  LOADER_UNAVAILABLE = 3,
 };
 
 void spin(){
@@ -134,76 +134,76 @@ out:
     return retval;
 }
 
-int check_and_mount_pogo() {
+int check_and_mount_loader() {
   char* disk;
   size_t len = 0;
   size_t total_len = 0;
-  char* pogo_buf = malloc(1048576);
-  if (pogo_buf == NULL) {
+  char* loader_buf = malloc(1048576);
+  if (loader_buf == NULL) {
     fprintf(stderr, "cannot allocate memory\n");
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
   unsigned char checksum[CC_SHA512_DIGEST_LENGTH];
   struct utsname name;
   CC_SHA512_CTX ctx;
   CC_SHA512_Init(&ctx);
-  printf("Checking Pogo\n");
-  if (access("/binpack/Applications/Pogo.app", F_OK) != -1) {
-    printf("Pogo already mounted\n");
-    return POGO_SUCCESS;
+  printf("Checking loader\n");
+  if (access("/binpack/Applications/palera1nLoader.app", F_OK) != -1) {
+    printf("loader already mounted\n");
+    return LOADER_SUCCESS;
   }
-  if (access(POGO_DMG_PATH, F_OK) != 0) {
-    printf("Pogo not available yet\n");
-    return POGO_UNAVAILABLE;
+  if (access(LOADER_DMG_PATH, F_OK) != 0) {
+    printf("loader not available yet\n");
+    return LOADER_UNAVAILABLE;
   }
-  int pogo_fd = open(POGO_DMG_PATH, O_RDONLY);
-  if (pogo_fd == -1) {
-    fprintf(stderr, "failed to open Pogo\n");
-    return POGO_UNKNOWN;
+  int loader_fd = open(LOADER_DMG_PATH, O_RDONLY);
+  if (loader_fd == -1) {
+    fprintf(stderr, "failed to open loader\n");
+    return LOADER_UNKNOWN;
   }
-  while ((len = read(pogo_fd, pogo_buf, 1048576)) > 0) {
+  while ((len = read(loader_fd, loader_buf, 1048576)) > 0) {
     total_len += len;
-    if (total_len > POGO_SIZE) {
-      fprintf(stderr, "Pogo too large\n");
-      return POGO_2BIG;
+    if (total_len > LOADER_SIZE) {
+      fprintf(stderr, "loader too large\n");
+      return LOADER_2BIG;
     }
-    CC_SHA512_Update(&ctx, pogo_buf, len);
+    CC_SHA512_Update(&ctx, loader_buf, len);
   }
-  free(pogo_buf);
+  free(loader_buf);
   CC_SHA512_Final(checksum, &ctx);
-  char checksum_hex[sizeof(POGO_CHECKSUM)];
-  char expected_hex[sizeof(POGO_CHECKSUM)] = POGO_CHECKSUM;
+  char checksum_hex[sizeof(LOADER_CHECKSUM)];
+  char expected_hex[sizeof(LOADER_CHECKSUM)] = LOADER_CHECKSUM;
   for (uint8_t i = 0; i < CC_SHA512_DIGEST_LENGTH; i++) {
     snprintf(&checksum_hex[i * 2], 3 ,"%02hhx", checksum[i]);
   }
   for (uint8_t i = 0; i < CC_SHA512_DIGEST_LENGTH*2; i++) {
     if (expected_hex[i] == checksum_hex[i]) continue;
-    fprintf(stderr, "Pogo checksum does NOT match! \"%s\" != \"%s\", at position %u '%c' != '%c'\n", expected_hex, checksum_hex, i, checksum_hex[i], expected_hex[i]);
-    close(pogo_fd);
-    return POGO_MISMATCH;
+    fprintf(stderr, "loader checksum does NOT match! \"%s\" != \"%s\", at position %u '%c' != '%c'\n", expected_hex, checksum_hex, i, checksum_hex[i], expected_hex[i]);
+    close(loader_fd);
+    return LOADER_MISMATCH;
   }
-  close(pogo_fd);
+  close(loader_fd);
   uname(&name);
   if (atoi(name.release) > 21) {
     disk = "/dev/disk5";
   } else {
     disk = "/dev/disk4";
   }
-  char* hdik_argv[] = { "/usr/sbin/hdik", "-nomount", POGO_DMG_PATH , NULL };
+  char* hdik_argv[] = { "/usr/sbin/hdik", "-nomount", LOADER_DMG_PATH , NULL };
   run(hdik_argv[0], hdik_argv);
   char* mount_argv[] = { "/sbin/mount_hfs", "-o", "ro", disk, "/binpack/Applications", NULL };
   run(mount_argv[0], mount_argv);
-  if (access("/binpack/Applications/Pogo.app", F_OK) != 0) {
-    fprintf(stderr, "Mounting Pogo failed\n");
-    return POGO_UNKNOWN;
+  if (access("/binpack/Applications/palera1nLoader.app", F_OK) != 0) {
+    fprintf(stderr, "Mounting loader failed\n");
+    return LOADER_UNKNOWN;
   }
-  printf("%s mounted on /binpack/Applications\n", POGO_DMG_PATH);
-  char* uicache_argv[] = { "/binpack/usr/bin/uicache", "-p", "/binpack/Applications/Pogo.app", NULL };
+  printf("%s mounted on /binpack/Applications\n", LOADER_DMG_PATH);
+  char* uicache_argv[] = { "/binpack/usr/bin/uicache", "-p", "/binpack/Applications/loader.app", NULL };
   run(uicache_argv[0], uicache_argv);
-  return POGO_SUCCESS;
+  return LOADER_SUCCESS;
 }
 
-int deploy_pogo(bool onboard_pogo) {
+int deploy_loader(bool onboard_loader) {
   int err = 0;
   int serverfd = 0;
   ssize_t total_len = 0;
@@ -216,19 +216,19 @@ int deploy_pogo(bool onboard_pogo) {
   };
   if (!((serverfd = socket(AF_INET, SOCK_STREAM, 0))>0)){
     printf("Failed to creat server socket\n");
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
   printf("[deployFiles] Socket ok\n");
 
   if ((err = bind(serverfd, (struct sockaddr*)&servaddr, sizeof(servaddr)))){
     printf("Failed to bind socket with error=%d errno=%d (%s)\n",err,errno,strerror(errno));
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
   printf("[deployFiles] Bind ok\n");
 
   if ((err = listen(serverfd, 100))){
     printf("Failed to listen on socket with error=%d errno=%d (%s)\n",err,errno,strerror(errno));
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
   printf("[deployFiles] Listen ok\n");
   int connfd = 0;
@@ -236,54 +236,54 @@ int deploy_pogo(bool onboard_pogo) {
   ssize_t len = 0;
   if (!((connfd = accept(serverfd, (struct sockaddr*)&client, (socklen_t*)&len))>0)){
     printf("Failed to accept client\n");
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
-  printf("[deployFiles] Accepted client connection for Pogo!\n");
+  printf("[deployFiles] Accepted client connection for loader!\n");
   // dup2(connfd, STDOUT_FILENO);
   // dup2(connfd, STDERR_FILENO);
-  if (onboard_pogo == true) {
-    printf("Pogo already uploaded\n");
+  if (onboard_loader == true) {
+    printf("loader already uploaded\n");
     close(connfd);
-    return POGO_SUCCESS;
+    return LOADER_SUCCESS;
   }
-  int fd_pogo = -1;
-  if ((fd_pogo = open(POGO_DMG_PATH, O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1) {
-    printf("failed to open '%s'\n",POGO_DMG_PATH);
+  int fd_loader = -1;
+  if ((fd_loader = open(LOADER_DMG_PATH, O_CREAT | O_WRONLY | O_TRUNC, 0644)) == -1) {
+    printf("failed to open '%s'\n",LOADER_DMG_PATH);
     close(connfd);
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
-  char* pogo_buf = malloc(1048576);
-  if (pogo_buf == NULL) {
+  char* loader_buf = malloc(1048576);
+  if (loader_buf == NULL) {
     fprintf(stderr, "cannot allocate memory\n");
-    return POGO_UNKNOWN;
+    return LOADER_UNKNOWN;
   }
-  while (zero_counter < UINT16_MAX && total_len < POGO_SIZE) {
-    len = read(connfd, pogo_buf, 1048576);
+  while (zero_counter < UINT16_MAX && total_len < LOADER_SIZE) {
+    len = read(connfd, loader_buf, 1048576);
     if (len == 0 || len < 0) {
-      if (len < 0) printf("cannot read Pogo, errno=%d (%s)\n", errno, strerror(errno));
+      if (len < 0) printf("cannot read loader, errno=%d (%s)\n", errno, strerror(errno));
       zero_counter += 1;
       usleep(1000);
       continue;
     }
     else zero_counter = 0;
     total_len += len;
-    printf("total_len = %ld, target size = %ld\n", total_len, POGO_SIZE);
-    if (total_len > POGO_SIZE) {
-      fprintf(stderr, "Pogo too big, total_len = %lu, POGO_SIZE=%lu\n", total_len, POGO_SIZE);
+    printf("total_len = %ld, target size = %ld\n", total_len, LOADER_SIZE);
+    if (total_len > LOADER_SIZE) {
+      fprintf(stderr, "loader too big, total_len = %lu, LOADER_SIZE=%lu\n", total_len, LOADER_SIZE);
       close(connfd);
-      return POGO_2BIG;
+      return LOADER_2BIG;
     }
-    ssize_t wrote = write(fd_pogo, pogo_buf, (size_t)len);
+    ssize_t wrote = write(fd_loader, loader_buf, (size_t)len);
     printf("wrote %ld/%ld bytes\n", wrote, len);
     if (wrote == -1) {
-      printf("cannot write pogo, errno=%d (%s)\n", errno, strerror(errno));
-      return POGO_UNKNOWN;
+      printf("cannot write loader, errno=%d (%s)\n", errno, strerror(errno));
+      return LOADER_UNKNOWN;
     }
     usleep(1000);
   }
-  free(pogo_buf);
-  close(fd_pogo);
-  int ret = check_and_mount_pogo();
+  free(loader_buf);
+  close(fd_loader);
+  int ret = check_and_mount_loader();
   close(connfd);
   return ret;
 }
@@ -300,13 +300,13 @@ void* enable_ssh(void* __unused _) {
   return NULL;
 }
 
-void* enable_pogo(void* __unused _) {
-  int ret = check_and_mount_pogo();
-  if (ret == POGO_UNKNOWN) return NULL;
-  if (ret == POGO_UNAVAILABLE || ret == POGO_MISMATCH || ret == POGO_2BIG) {
-    deploy_pogo(false);
-  } else if (ret == POGO_SUCCESS) {
-    deploy_pogo(true);
+void* enable_loader(void* __unused _) {
+  int ret = check_and_mount_loader();
+  if (ret == LOADER_UNKNOWN) return NULL;
+  if (ret == LOADER_UNAVAILABLE || ret == LOADER_MISMATCH || ret == LOADER_2BIG) {
+    deploy_loader(false);
+  } else if (ret == LOADER_SUCCESS) {
+    deploy_loader(true);
   }
   return NULL;
 }
@@ -321,11 +321,11 @@ int jbloader_main(int argc, char **argv) {
     printf("palera1n: init!\n");
     printf("pid: %d\n",getpid());
     printf("uid: %d\n",getuid());
-    pthread_t pogo_thread, ssh_thread, launch_daemons_thread;
-    pthread_create(&pogo_thread, NULL, enable_pogo, NULL);
+    pthread_t loader_thread, ssh_thread, launch_daemons_thread;
+    pthread_create(&loader_thread, NULL, enable_loader, NULL);
     pthread_create(&ssh_thread, NULL, enable_ssh, NULL);
     pthread_create(&launch_daemons_thread, NULL, launch_daemons, NULL);
-    pthread_join(pogo_thread, NULL);
+    pthread_join(loader_thread, NULL);
     pthread_join(ssh_thread, NULL);
     pthread_join(launch_daemons_thread, NULL);
     printf("palera1n: goodbye!\n");
